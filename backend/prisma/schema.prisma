@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Users
+model User {
+  id        String    @id @default(uuid())
+  firstName String    @map("first_name")
+  lastName  String    @map("last_name")
+  email     String    @unique
+  password  String
+  salt      String
+
+  messages  Message[]         // Messages sent by user
+  rooms     RoomMember[]      // Rooms the user is part of
+
+  @@map("users")
+}
+
+// Room can be one-to-one or group
+model Room {
+  id        String       @id @default(uuid())
+  name      String?      // Optional, mainly for group chats
+  isGroup   Boolean      @default(false)
+
+  messages  Message[]    // Messages in this room
+  members   RoomMember[] // Users in this room
+}
+
+// Join table for many-to-many User <-> Room
+model RoomMember {
+  id     String @id @default(uuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  room   Room   @relation(fields: [roomId], references: [id])
+  roomId String
+
+  @@unique([userId, roomId]) // prevent duplicates
+}
+
+// Messages
+model Message {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  sender    User     @relation(fields: [senderId], references: [id])
+  senderId  String
+  room      Room     @relation(fields: [roomId], references: [id])
+  roomId    String
+}
