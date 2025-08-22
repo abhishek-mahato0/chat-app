@@ -5,13 +5,13 @@ export const resolvers = {
     getRoom: (_: any, { id }: { id: string }) =>
       prismaClient.room.findUnique({
         where: { id },
-        include: { members: true, messages: true },
+        include: { users: true, messages: true },
       }),
 
     getRoomsForUser: (_: any, { userId }: { userId: string }) =>
       prismaClient.room.findMany({
-        where: { members: { some: { userId } } },
-        include: { members: true, messages: true },
+        where: { users: { some: { userId } } },
+        include: { users: true, messages: true },
       }),
 
     getMessages: (_: any, { roomId }: { roomId: string }) =>
@@ -34,9 +34,9 @@ export const resolvers = {
         data: {
           name: name ?? null,
           isGroup,
-          members: { create: memberIds.map((id) => ({ userId: id })) },
+          users: { create: memberIds.map((id) => ({ userId: id })) },
         },
-        include: { members: true },
+        include: { users: true },
       });
       return room;
     },
@@ -46,8 +46,8 @@ export const resolvers = {
       {
         roomId,
         senderId,
-        content,
-      }: { roomId: string; senderId: string; content: string }
-    ) => prismaClient.message.create({ data: { roomId, senderId, content } }),
+        text,
+      }: { roomId: string; senderId: string; text: string }
+    ) => prismaClient.message.create({ data: { roomId, senderId, text } }),
   },
 };

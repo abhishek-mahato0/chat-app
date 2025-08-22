@@ -9,7 +9,7 @@ type Room {
 
 type Message {
   id: ID!
-  content: String!
+  text: String!
   sender: User!
   room: Room!
   createdAt: String!
@@ -22,7 +22,7 @@ type Query {
 }
 
 type Mutation {
-  createRoom(name: String, isGroup: Boolean!, memberIds: [ID!]!): Room!
-  createMessage(roomId: ID!, senderId: ID!, content: String!): Message!
+  createRoom(name: String!, isGroup: Boolean!, memberIds: [ID!]!): Room!
+  createMessage(roomId: ID!, senderId: ID!, text: String!): Message!
 }
 `;

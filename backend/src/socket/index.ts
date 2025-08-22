@@ -1,8 +1,10 @@
 import { Server, Socket } from "socket.io";
 import { prismaClient } from "../lib/db.js";
+import { createAdapter } from "@socket.io/redis-streams-adapter";
+import { redisClient } from "../redis/index.js";
 
 interface ChatMessage {
-  message: string;
+  text: string;
   roomId?: string;
   toUserId?: string; // for 1:1 chat
 }
@@ -18,6 +20,7 @@ export default class SocketService {
         methods: ["GET", "POST"],
         credentials: true,
       },
+      adapter:createAdapter(redisClient)
     });
   }
 
@@ -61,31 +64,31 @@ export default class SocketService {
             room = await prismaClient.room.findFirst({
               where: {
                 isGroup: false,
-                members: { some: { userId } },
-                AND: { members: { some: { userId: toUserId } } },
+                users: { some: { userId } },
+                AND: { users: { some: { userId: toUserId } } },
               },
-              include: { members: true },
+              include: { users: true },
             });
 
             if (!room) {
               room = await prismaClient.room.create({
                 data: {
                   isGroup: false,
-                  members: {
+                  users: {
                     create: [
                       { user: { connect: { id: userId } } },
                       { user: { connect: { id: toUserId } } },
                     ],
                   },
                 },
-                include: { members: true },
+                include: { users: true },
               });
             }
           } else if (roomId) {
             // Group chat
             room = await prismaClient.room.findUnique({
               where: { id: roomId },
-              include: { members: true },
+              include: { users: true },
             });
             if (!room?.id) return;
           }
@@ -100,7 +103,7 @@ export default class SocketService {
             where: { roomId: finalRoomId },
             orderBy: { createdAt: "asc" },
             include: {
-              sender: { select: { id: true, firstName: true, lastName: true } },
+              sender: { select: { id: true, fullname: true, username:true } },
             },
           });
 
@@ -116,7 +119,7 @@ export default class SocketService {
       // --- Handle messages ---
       socket.on(
         "event:message",
-        async ({ message, roomId, toUserId }: ChatMessage) => {
+        async ({ text, roomId, toUserId }: ChatMessage) => {
           const userId = socket.handshake.auth.userId;
           if (!userId || (!roomId && !toUserId)) return;
 
@@ -127,46 +130,46 @@ export default class SocketService {
             room = await prismaClient.room.findFirst({
               where: {
                 isGroup: false,
-                members: { some: { userId } },
-                AND: { members: { some: { userId: toUserId } } },
+                users: { some: { userId } },
+                AND: { users: { some: { userId: toUserId } } },
               },
-              include: { members: true },
+              include: { users: true },
             });
 
             if (!room) {
               room = await prismaClient.room.create({
                 data: {
                   isGroup: false,
-                  members: {
+                  users: {
                     create: [
                       { user: { connect: { id: userId } } },
                       { user: { connect: { id: toUserId } } },
                     ],
                   },
                 },
-                include: { members: true },
+                include: { users: true },
               });
             }
           } else if (roomId) {
             // Group chat
             room = await prismaClient.room.findUnique({
               where: { id: roomId },
-              include: { members: true },
+              include: { users: true },
             });
             if (!room) return;
           }
 
           if (!room?.id) return;
           const finalRoomId = room.id;
-          room.members
-          .filter((m) => m.userId !== userId)
-          .forEach((member) => {
+          room.users
+          .filter((m: any) => m.userId !== userId)
+          .forEach((member: any) => {
             const sockets = this.userSockets[member.userId] || [];
             sockets.forEach((sockId) => {
                 this.io.to(sockId).emit("event:message", {
                   from: userId,
                   roomId: finalRoomId,
-                  message,
+                  text,
                   createdAt: new Date(),
                 });
               });
@@ -175,7 +178,7 @@ export default class SocketService {
           // --- Save message asynchronously ---
           await prismaClient.message.create({
             data: {
-              content: message,
+              text,
               sender: { connect: { id: userId } },
               room: { connect: { id: finalRoomId } },
             },

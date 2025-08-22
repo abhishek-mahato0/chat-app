@@ -46,25 +46,24 @@ export const resolvers = {
     createUser: async (
       _: any,
       {
-        firstName,
-        lastName,
+        fullname,
+        username,
         email,
         password,
       }: {
-        firstName: string;
-        lastName: string;
+        fullname: string;
+        username: string;
         email: string;
         password: string;
       }
     ) => {
-      console.log(email, password, firstName, lastName);
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
+      console.log(fullname, username, email, hashedPassword);
 
       const user = await prismaClient.user.create({
-        data: { firstName, lastName, email, password: hashedPassword, salt },
+        data: { fullname, username , email, password: hashedPassword, salt },
       });
-
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
         expiresIn: "7d",
       });
@@ -80,7 +79,7 @@ export const resolvers = {
       }: { content: string; roomId: string; senderId: string }
     ) => {
       return prismaClient.message.create({
-        data: { content, roomId, senderId },
+        data: { text: content, roomId, senderId },
       });
     },
   },

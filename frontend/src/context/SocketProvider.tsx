@@ -55,8 +55,8 @@ export const SocketProvider = ({
   );
 
   const sendMessage = useCallback(
-    (msg: string, roomId?: string, toUserId?: string) => {
-      socket?.emit("event:message", { roomId, message: msg, toUserId });
+    (text: string, roomId?: string, toUserId?: string) => {
+      socket?.emit("event:message", { roomId, text, toUserId });
     },
     [socket]
   );

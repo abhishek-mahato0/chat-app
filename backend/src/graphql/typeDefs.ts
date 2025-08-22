@@ -1,8 +1,8 @@
 export const typeDefs = `
 type User {
   id: ID!
-  firstName: String!
-  lastName: String!
+  fullname: String!
+  username: String!
   email: String!
 }
 
@@ -37,8 +37,8 @@ type Query {
 }
 
 type Mutation {
-  createUser(firstName: String!, lastName: String!, email: String!, password: String!): AuthPayload
+  createUser(fullname: String!, username: String!, email: String!, password: String!): AuthPayload
   createRoom(name: String, isGroup: Boolean!, memberIds: [ID!]!): Room!
-  createMessage(content: String!, roomId: ID!, senderId: ID!): Message!
+  createMessage(text: String!, roomId: ID!, senderId: ID!): Message!
 }
 `;
