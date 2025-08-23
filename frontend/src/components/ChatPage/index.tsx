@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { SocketProvider } from "../../context/SocketProvider";
 import { useSocket } from "../../context/utils";
@@ -21,6 +21,7 @@ export interface Message {
   message?: string;
   avatar?: string;
   fullname?: string;
+  sender?: User;
 }
 
 const GET_ALL_USERS = gql`
@@ -98,29 +99,7 @@ export const ChatPageInner = () => {
     <div className="flex min-h-screen bg-[#111418] text-white">
       {/* Sidebar */}
       <Sidebar friends={data?.getAllUsers || []} suggested={[]} />
-      {/* <div className="w-1/4 bg-gray-800 border-r border-gray-700 p-4 flex flex-col">
-        <h2 className="text-xl font-bold mb-4 text-gray-200">Users</h2>
-        <div className="flex-1 overflow-y-auto space-y-2 scrollbar-thin scrollbar-thumb-gray-600">
-          {(data?.getAllUsers || []).map((u: User) => (
-            <div
-              key={u.id}
-              className={`flex items-center p-2 cursor-pointer rounded-lg transition ${
-                selectedUser === u.id
-                  ? "bg-blue-600 text-white"
-                  : "hover:bg-gray-700 text-gray-300"
-              }`}
-              onClick={() => setSelectedUser(u.id)}
-            >
-              <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center mr-3 font-semibold">
-                {u.fullname[0]}
-              </div>
-              <span className="truncate">{u.fullname}</span>
-            </div>
-          ))}
-        </div>
-      </div> */}
-
-      <div className="flex-1">
+      <div className="flex-1 border-l-[1px] border-l-gray-700">
         {/* Right chat area */}
         <ChatBox
           selectedUser={selectedUser}
