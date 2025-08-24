@@ -3,7 +3,7 @@ type Room {
   id: ID!
   name: String
   isGroup: Boolean!
-  members: [User!]!
+  users: [User!]!
   messages: [Message!]!
 }
 

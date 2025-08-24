@@ -27,6 +27,7 @@ export default class SocketService {
   public initListeners() {
     this.io.on("connection", (socket: Socket) => {
       const userId = socket.handshake.auth.userId;
+      const fullName = socket.handshake.query.fullname
 
       if (userId) {
         if (!this.userSockets[userId]) this.userSockets[userId] = new Set();
@@ -94,7 +95,6 @@ export default class SocketService {
           }
 
           if (!room?.id) return;
-
           const finalRoomId = room.id;
           socket.join(finalRoomId);
 
@@ -106,7 +106,7 @@ export default class SocketService {
               sender: { select: { id: true, fullname: true, username:true } },
             },
           });
-
+           
           socket.emit("previous:messages", previousMessages);
         }
       );
@@ -122,7 +122,7 @@ export default class SocketService {
         async ({ text, roomId, toUserId }: ChatMessage) => {
           const userId = socket.handshake.auth.userId;
           if (!userId || (!roomId && !toUserId)) return;
-
+          console.log("Message received:", text, roomId, toUserId, fullName);
           let room;
 
           // 1:1 chat
@@ -167,8 +167,9 @@ export default class SocketService {
             const sockets = this.userSockets[member.userId] || [];
             sockets.forEach((sockId) => {
                 this.io.to(sockId).emit("event:message", {
-                  from: userId,
+                  senderId: userId,
                   roomId: finalRoomId,
+                  sender: {fullname: fullName},
                   text,
                   createdAt: new Date(),
                 });

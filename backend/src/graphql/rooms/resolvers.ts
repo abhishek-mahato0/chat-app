@@ -8,11 +8,24 @@ export const resolvers = {
         include: { users: true, messages: true },
       }),
 
-    getRoomsForUser: (_: any, { userId }: { userId: string }) =>
-      prismaClient.room.findMany({
-        where: { users: { some: { userId } } },
-        include: { users: true, messages: true },
-      }),
+    getRoomsForUser: async (_: any, { userId }: { userId: string }) => {
+      const rooms = await prismaClient.room.findMany({
+        where: { isGroup: true, users: { some: { userId } } },
+        include: {
+          users: { include: { user: true } }, // include User object
+        },
+      });
+
+      // Map junction table to return users array
+      const mappedRooms = rooms.map((room) => ({
+        ...room,
+        users: room.users
+          .map((ru) => ru.user) // extract the actual user
+          .filter(Boolean), // remove null users
+      }));
+
+      return mappedRooms;
+    },
 
     getMessages: (_: any, { roomId }: { roomId: string }) =>
       prismaClient.message.findMany({
@@ -34,9 +47,15 @@ export const resolvers = {
         data: {
           name: name ?? null,
           isGroup,
-          users: { create: memberIds.map((id) => ({ userId: id })) },
+          users: {
+            create: memberIds.map((id) => ({
+              user: { connect: { id } },
+            })),
+          },
         },
-        include: { users: true },
+        include: {
+          users: { include: { user: true } },
+        },
       });
       return room;
     },
