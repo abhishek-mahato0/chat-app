@@ -55,9 +55,12 @@ export const Register = () => {
     password: "",
   });
 
-  const [errors, setErrors] = useState<Partial<Record<keyof RegisterFormData, string>>>({});
+  const [errors, setErrors] = useState<
+    Partial<Record<keyof RegisterFormData, string>>
+  >({});
 
-  const [register, { loading, error: serverError }] = useMutation(REGISTER_MUTATION);
+  const [register, { loading, error: serverError }] =
+    useMutation(REGISTER_MUTATION);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -73,6 +76,7 @@ export const Register = () => {
 
       if (data?.createUser?.token) {
         localStorage.setItem("token", data.createUser.token);
+        localStorage.setItem("user", JSON.stringify(data.createUser.user));
         localStorage.setItem("userId", data.createUser.user.id);
         navigate("/chat");
       }
@@ -81,7 +85,8 @@ export const Register = () => {
         // Map Zod errors to our state
         const fieldErrors: Partial<Record<keyof RegisterFormData, string>> = {};
         err.issues.forEach((e) => {
-          if (e.path[0]) fieldErrors[e.path[0] as keyof RegisterFormData] = e.message;
+          if (e.path[0])
+            fieldErrors[e.path[0] as keyof RegisterFormData] = e.message;
         });
         setErrors(fieldErrors);
       } else {

@@ -22,6 +22,16 @@ type Message {
   createdAt: String!
 }
 
+type Post {
+  id: ID!
+  title: String!
+  content: String!
+  author: User!
+  likeCount: Int!
+  createdAt: String!
+  updatedAt: String!
+}
+
 type AuthPayload {
   token: String!
   user: User!
@@ -34,11 +44,16 @@ type Query {
   getRoom(id: ID!): Room
   getRoomsForUser(userId: ID!): [Room!]!
   getMessages(roomId: ID!): [Message!]!
+  getPostsForUser(userId: ID!): [Post!]!
+  getAllPosts(): [Post!]!
 }
 
 type Mutation {
   createUser(fullname: String!, username: String!, email: String!, password: String!): AuthPayload
   createRoom(name: String, isGroup: Boolean!, memberIds: [ID!]!): Room!
   createMessage(text: String!, roomId: ID!, senderId: ID!): Message!
+  addMember(roomId: ID!, userId: ID!): Room!
+  createPost(title: String!, content: String!, authorId: ID!): Post!
+  likePost(postId: ID!, userId: ID!): Post!
 }
 `;

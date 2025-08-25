@@ -1,9 +1,9 @@
-import { prismaClient } from "../../lib/db.js";
+import { getPrismaClient } from "../../lib/db.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "secret";
-
+const prismaClient = getPrismaClient();
 export const resolvers = {
   queries: {
     getUserById: async (_: any, { id }: { id: string }) => {
@@ -59,7 +59,6 @@ export const resolvers = {
     ) => {
       const salt = await bcrypt.genSalt(10);
       const hashedPassword = await bcrypt.hash(password, salt);
-      console.log(fullname, username, email, hashedPassword);
 
       const user = await prismaClient.user.create({
         data: { fullname, username , email, password: hashedPassword, salt },

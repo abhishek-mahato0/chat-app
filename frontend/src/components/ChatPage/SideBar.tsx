@@ -8,13 +8,19 @@ import { CreateGroupBody } from "../AddFriends";
 interface ISideBarProps {
   friends: Array<IFriendItemProps>;
   suggested: Array<ISuggestedItemProps>;
+  onlineUsers: string[];
+  groupChats: Array<{
+    id: string;
+    name: string;
+    users: Array<IFriendItemProps>;
+  }>;
 }
 
 const EmptyFriendList = ({ text }: { text: string }) => {
   return <div className="text-gray-500 text-sm">{text}</div>;
 };
 
-const Sidebar = ({ friends, suggested }: ISideBarProps) => {
+const Sidebar = ({ friends, suggested, onlineUsers, groupChats }: ISideBarProps) => {
   return (
     <div className="flex flex-col w-80 gap-4 bg-[#111418] h-full py-6 px-5 overflow-y-auto">
       <div className="flex items-center gap-3 justify-between mb-4">
@@ -38,7 +44,15 @@ const Sidebar = ({ friends, suggested }: ISideBarProps) => {
         {friends.length === 0 ? (
           <EmptyFriendList text="No Chats Yet." />
         ) : (
-          friends.map((f, i) => <FriendItem key={i} {...f} />)
+          friends.map((f, i) => <FriendItem key={i} {...f} online={onlineUsers.includes(f.id)} />)
+        )}
+      </div>
+       <div className="flex flex-col gap-4">
+        <h2 className="text-white font-bold text-lg mt-6">Group Chats</h2>
+        {groupChats.length === 0 ? (
+          <EmptyFriendList text="No Groups Created Yet." />
+        ) : (
+          groupChats.map((s, i) => <FriendItem key={i} id={s.id} fullname={s.name} online={s.users.some((u) => onlineUsers.includes(u.id))} isGroup />)
         )}
       </div>
       <div className="flex flex-col gap-4">

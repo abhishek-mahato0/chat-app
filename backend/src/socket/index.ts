@@ -1,7 +1,7 @@
 import { Server, Socket } from "socket.io";
-import { prismaClient } from "../lib/db.js";
 import { createAdapter } from "@socket.io/redis-streams-adapter";
 import { redisClient } from "../redis/index.js";
+import { prismaClient } from "../lib/db.js";
 
 interface ChatMessage {
   text: string;
@@ -20,14 +20,14 @@ export default class SocketService {
         methods: ["GET", "POST"],
         credentials: true,
       },
-      adapter:createAdapter(redisClient)
+      adapter: createAdapter(redisClient),
     });
   }
 
   public initListeners() {
     this.io.on("connection", (socket: Socket) => {
       const userId = socket.handshake.auth.userId;
-      const fullName = socket.handshake.query.fullname
+      const fullName = socket.handshake.query.fullname;
 
       if (userId) {
         if (!this.userSockets[userId]) this.userSockets[userId] = new Set();
@@ -42,7 +42,6 @@ export default class SocketService {
         socket.data.userId = userId;
         const onlineUsers = Object.keys(this.userSockets); // all userIds with active sockets
         this.io.emit("online:users", onlineUsers);
-
       });
 
       // --- Join room (1:1 or group) ---
@@ -103,10 +102,10 @@ export default class SocketService {
             where: { roomId: finalRoomId },
             orderBy: { createdAt: "asc" },
             include: {
-              sender: { select: { id: true, fullname: true, username:true } },
+              sender: { select: { id: true, fullname: true, username: true } },
             },
           });
-           
+
           socket.emit("previous:messages", previousMessages);
         }
       );
@@ -162,14 +161,14 @@ export default class SocketService {
           if (!room?.id) return;
           const finalRoomId = room.id;
           room.users
-          .filter((m: any) => m.userId !== userId)
-          .forEach((member: any) => {
-            const sockets = this.userSockets[member.userId] || [];
-            sockets.forEach((sockId) => {
+            .filter((m: any) => m.userId !== userId)
+            .forEach((member: any) => {
+              const sockets = this.userSockets[member.userId] || [];
+              sockets.forEach((sockId) => {
                 this.io.to(sockId).emit("event:message", {
                   senderId: userId,
                   roomId: finalRoomId,
-                  sender: {fullname: fullName},
+                  sender: { fullname: fullName },
                   text,
                   createdAt: new Date(),
                 });
@@ -177,15 +176,42 @@ export default class SocketService {
             });
 
           // --- Save message asynchronously ---
-          await prismaClient.message.create({
+          const savedMessage = await prismaClient.message.create({
             data: {
               text,
               sender: { connect: { id: userId } },
               room: { connect: { id: finalRoomId } },
             },
           });
+          await prismaClient.room.update({
+            where: { id: finalRoomId },
+            data: { latestMessageId: savedMessage.id },
+          });
+
+          this.io.to(finalRoomId).emit("room:updated", {
+            roomId: finalRoomId,
+            latestMessage: {
+              id: savedMessage.id,
+              text: savedMessage.text,
+              createdAt: savedMessage.createdAt,
+              sender: { id: userId, fullname: fullName },
+            },
+          });
         }
       );
+
+      socket.on("room:seen", async ({ roomId, messageId }) => {
+        const userId = socket.data.userId;
+        if (!userId) return;
+
+        await prismaClient.roomUser.updateMany({
+          where: { roomId, userId },
+          data: { lastSeenMessageId: messageId },
+        });
+
+        // notify others in the room (for double ticks etc.)
+        socket.to(roomId).emit("room:seen", { userId, messageId });
+      });
 
       // --- Disconnect ---
       socket.on("disconnect", () => {

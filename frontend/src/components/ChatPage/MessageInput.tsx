@@ -24,6 +24,11 @@ const MessageInput = ({
         placeholder="Type a message"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            handleSendMessage();
+          }
+        }}
         className="flex-1 bg-[#283039] text-white rounded-lg px-4 py-3 focus:outline-none placeholder:text-[#9caaba]"
       />
       <button

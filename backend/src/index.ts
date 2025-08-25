@@ -7,15 +7,17 @@ import cors from "cors";
 // import { initRedisConsumer } from "./socket/consumer/index.js";
 import bodyParser from "body-parser";
 import createGQLServer from "./graphql/index.js";
-import { prismaClient } from "./lib/db.js";
+import jwt from "jsonwebtoken";
+import { getPrismaClient } from "./lib/db.js";
 
 async function init() {
   const socketService = new SocketService();
   const app = express();
+  const JWT_SECRET = process.env.JWT_SECRET || "secret";
 
     try {
     // Check DB connection
-    await prismaClient.$connect();
+    await getPrismaClient().$connect();
     console.log("✅ Database connected successfully!");
   } catch (err) {
     console.error("❌ Database connection failed:", err);
@@ -42,7 +44,23 @@ async function init() {
     return res.json({ message: "welcome home" });
   });
 
-  app.use("/graphql", bodyParser.json(), expressMiddleware(gqlServer));
+  app.use("/graphql", bodyParser.json(), expressMiddleware(gqlServer, {
+    context: async ({ req }) => {
+      const token = req.headers.authorization?.replace("Bearer ", "");
+      try {
+        if (!token) throw new Error("Unauthorized");
+
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        const user = await getPrismaClient().user.findUnique({ where: { id: decoded.userId } });
+        if (!user) throw new Error("User not found");
+
+        return { user };
+      } catch (error) {
+        console.error("Error verifying token:", error);
+        throw new Error("Unauthorized");
+      }
+    },
+  }));
 
   httpServer.listen(PORT, () => {
     console.log(`Connected to port ${PORT}`);

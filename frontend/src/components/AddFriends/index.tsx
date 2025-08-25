@@ -4,6 +4,10 @@ import { FormComponent } from "../FormInput";
 import ShowAvatar from "../ShowAvatar";
 import { Button } from "../ui/button";
 import type { IFriendItemProps } from "../ChatPage/FriendList";
+import { gql, useMutation } from "@apollo/client";
+import { toast } from "sonner";
+import { useSocket } from "../../context/utils";
+import { useSearchParams } from "react-router-dom";
 
 interface CreateGroupProps {
   friends: IFriendItemProps[];
@@ -11,14 +15,26 @@ interface CreateGroupProps {
   onCreate: (groupName: string, members: IFriendItemProps[]) => void;
 }
 
+const CREATE_ROOM = gql`
+  mutation CreateRoom($name: String!, $isGroup: Boolean!, $memberIds: [ID!]!) {
+    createRoom(name: $name, isGroup: $isGroup, memberIds: $memberIds) {
+      id
+      name
+      isGroup
+    }
+  }
+`;
+
 export const CreateGroupBody: React.FC<CreateGroupProps> = ({
-  friends,
-  onCancel,
-  onCreate,
+  friends
 }) => {
   const [groupName, setGroupName] = useState<string>("");
+  const {joinRoom} = useSocket();
   const [search, setSearch] = useState<string>("");
+  const userId = localStorage.getItem("userId")!;
+  const [, setSearchParams] = useSearchParams();
   const [members, setMembers] = useState<IFriendItemProps[]>([]);
+  const [createRoom, { loading, error, data }] = useMutation(CREATE_ROOM);
 
   const filteredFriends = friends.filter(
     (f) =>
@@ -32,6 +48,28 @@ export const CreateGroupBody: React.FC<CreateGroupProps> = ({
 
   const removeMember = (id: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== id));
+  };
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    try {
+      await createRoom({
+        variables: {
+          name: groupName,
+          isGroup: true,
+          memberIds: [userId, ...members.map((m) => m.id)],
+        },
+      });
+      toast("Room created successfully!");
+      setGroupName("");
+      setMembers([]);
+      if(data.createRoom?.id){
+         joinRoom(data.createRoom.id);
+         setSearchParams({ roomId: data.createRoom.id });
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   return (
@@ -104,16 +142,17 @@ export const CreateGroupBody: React.FC<CreateGroupProps> = ({
 
       {/* Actions */}
       <div className="flex justify-end gap-3">
-        <Button variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
         <Button
           disabled={!groupName || members.length === 0}
-          onClick={() => onCreate(groupName, members)}
+          onClick={handleSubmit}
+          loading={loading}
         >
           Create Group
         </Button>
       </div>
+      <span className="text-red-600 text-sm">
+        {error && "Failed to create group"}
+      </span>
     </div>
   );
 };

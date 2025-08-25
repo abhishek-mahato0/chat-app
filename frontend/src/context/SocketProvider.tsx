@@ -16,6 +16,7 @@ export interface ISocketContext {
   joinRoom: (roomId?: string, userId?: string) => void;
   sendMessage: (roomId: string, msg: string, toUserId: string) => void;
   onMessage: (callback: (msg: any) => void) => void;
+  onOnlineUsers: (callback: (users: string[]) => void) => void;
   onPreviousMessages: (callback: (msgs: ChatMessage[]) => void) => void;
   disconnectSocket: () => void;
 }
@@ -23,15 +24,17 @@ export interface ISocketContext {
 export const SocketProvider = ({
   children,
   userId,
+  fullName
 }: {
   children: React.ReactNode;
   userId: string;
+  fullName: string;
 }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
-
   useEffect(() => {
     const _socket = io("http://localhost:8080", {
       auth: { userId }, // optional, can be read on server via socket.handshake.auth.userId
+      query: { fullname: fullName }
     });
 
     _socket.on("connect", () => {
@@ -56,6 +59,7 @@ export const SocketProvider = ({
 
   const sendMessage = useCallback(
     (text: string, roomId?: string, toUserId?: string) => {
+      console.log("sned", roomId, text, toUserId)
       socket?.emit("event:message", { roomId, text, toUserId });
     },
     [socket]
@@ -80,6 +84,16 @@ export const SocketProvider = ({
     [socket]
   );
 
+  const onOnlineUsers = useCallback(
+    (callback: (users: string[]) => void) => {
+      if (!socket) return;
+      const handler = (users: string[]) => callback(users);
+      socket.on("online:users", handler);
+      return () => socket.off("online:users", handler);
+    },
+    [socket]
+  );
+
   // Optional: disconnect socket manually
   const disconnectSocket = useCallback(() => {
     socket?.disconnect();
@@ -94,6 +108,7 @@ export const SocketProvider = ({
         onMessage,
         onPreviousMessages,
         disconnectSocket,
+        onOnlineUsers
       }}
     >
       {children}

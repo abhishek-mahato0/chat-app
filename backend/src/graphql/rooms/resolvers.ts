@@ -1,4 +1,10 @@
-import { prismaClient } from "../../lib/db.js";
+import { getPrismaClient } from "../../lib/db.js";
+
+// getRoom(id: ID!): Room
+// getRoomsForUser(userId: ID!): [Room!]!
+// getMessages(roomId: ID!): [Message!]!
+
+const prismaClient = getPrismaClient();
 
 export const resolvers = {
   queries: {
@@ -12,19 +18,48 @@ export const resolvers = {
       const rooms = await prismaClient.room.findMany({
         where: { isGroup: true, users: { some: { userId } } },
         include: {
-          users: { include: { user: true } }, // include User object
+          users: { include: { user: true } },
+          latestMessage: {
+            include: { sender: true },
+          },
         },
       });
 
-      // Map junction table to return users array
-      const mappedRooms = rooms.map((room) => ({
-        ...room,
-        users: room.users
-          .map((ru) => ru.user) // extract the actual user
-          .filter(Boolean), // remove null users
-      }));
+      // attach unreadCount
+      return Promise.all(
+        rooms.map(async (room) => {
+          const roomUser = await prismaClient.roomUser.findFirst({
+            where: { roomId: room.id, userId },
+            select: { lastSeenMessageId: true },
+          });
 
-      return mappedRooms;
+          let unreadCount = 0;
+
+          if (roomUser?.lastSeenMessageId) {
+            const lastSeenMessageCreatedAt =
+              await prismaClient.message.findUnique({
+                where: { id: roomUser?.lastSeenMessageId },
+                select: { createdAt: true },
+              });
+            if (lastSeenMessageCreatedAt) {
+              unreadCount = await prismaClient.message.count({
+                where: {
+                  roomId: room.id,
+                  createdAt: {
+                    gt: lastSeenMessageCreatedAt.createdAt,
+                  },
+                },
+              });
+            }
+          }
+
+          return {
+            ...room,
+            users: room.users.map((ru) => ru.user),
+            unreadCount,
+          };
+        })
+      );
     },
 
     getMessages: (_: any, { roomId }: { roomId: string }) =>
@@ -67,6 +102,16 @@ export const resolvers = {
         senderId,
         text,
       }: { roomId: string; senderId: string; text: string }
-    ) => prismaClient.message.create({ data: { roomId, senderId, text } }),
+    ) => {
+      const message = await prismaClient.message.create({
+        data: { roomId, senderId, text },
+      });
+      await prismaClient.room.update({
+        where: { id: roomId },
+        data: { latestMessageId: message.id },
+      });
+
+      return message;
+    },
   },
 };
