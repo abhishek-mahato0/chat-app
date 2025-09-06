@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { debounce } from "../../hooks/useDebounce";
 
 const MessageInput = ({
   sendMessage,
+  handleTyping,
 }: {
   sendMessage: (message: string) => void;
+  handleTyping: () => void;
 }) => {
   const [message, setMessage] = useState("");
 
@@ -11,6 +14,14 @@ const MessageInput = ({
     sendMessage(message);
     setMessage("");
   };
+
+const handleUserTyping = useMemo(
+    () =>
+      debounce(() => {
+        handleTyping(); // Notify that user is typing
+      }, 500),
+    [handleTyping]
+  );
 
   return (
     <div className="flex items-center gap-3 p-4 bg-[#111418]">
@@ -23,7 +34,10 @@ const MessageInput = ({
       <input
         placeholder="Type a message"
         value={message}
-        onChange={(e) => setMessage(e.target.value)}
+        onChange={(e) => {
+          setMessage(e.target.value);
+          handleUserTyping();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             handleSendMessage();

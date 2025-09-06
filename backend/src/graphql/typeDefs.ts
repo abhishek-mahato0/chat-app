@@ -45,7 +45,7 @@ type Query {
   getRoomsForUser(userId: ID!): [Room!]!
   getMessages(roomId: ID!): [Message!]!
   getPostsForUser(userId: ID!): [Post!]!
-  getAllPosts(): [Post!]!
+  getAllPosts: [Post!]!
 }
 
 type Mutation {

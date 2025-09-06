@@ -20,7 +20,7 @@ export default class SocketService {
         methods: ["GET", "POST"],
         credentials: true,
       },
-      adapter: createAdapter(redisClient),
+      // adapter: createAdapter(redisClient),
     });
   }
 
@@ -113,6 +113,32 @@ export default class SocketService {
       // --- Leave room ---
       socket.on("room:leave", (roomId: string) => {
         socket.leave(roomId);
+      });
+
+      // handle typing effect
+      socket.on("event:typing", ({ roomId, isGroup, isTyping }: { roomId: string; isGroup: boolean; isTyping: boolean }) => {
+        const userId = socket.handshake.auth.userId;
+        if (!userId || !roomId) return;
+        const sockets = this.userSockets[roomId] || [];
+        console.log("Typing event:", { roomId, userId, isTyping, isGroup, fullName, sockets });
+        if(isGroup) {
+          // emit to all in the room except sender
+          socket.to(roomId).emit("event:typing", {
+            roomId,
+            userId,
+            fullName: fullName as string,
+            isTyping,
+          });
+          return;
+        }
+        sockets.forEach((sockId) => {
+            this.io.to(sockId).emit("event:typing", {
+              roomId,
+              userId,
+              fullName: fullName as string,
+              isTyping,
+            });
+          });
       });
 
       // --- Handle messages ---

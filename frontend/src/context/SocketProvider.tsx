@@ -18,6 +18,8 @@ export interface ISocketContext {
   onMessage: (callback: (msg: any) => void) => void;
   onOnlineUsers: (callback: (users: string[]) => void) => void;
   onPreviousMessages: (callback: (msgs: ChatMessage[]) => void) => void;
+  handleTyping: (isTyping: boolean, isGroup: boolean, roomId?: string) => void;
+  isTyping: (callback: (data: { roomId: string; userId: string; fullName: string; isTyping: boolean }) => void) => void;
   disconnectSocket: () => void;
 }
 
@@ -74,6 +76,20 @@ export const SocketProvider = ({
     [socket]
   );
 
+  useEffect(()=>{
+   socket?.on("event:message", (data:any)=>{
+    console.log("Message received on client:", data);
+   });
+  }, [socket])
+
+  const handleTyping = useCallback(
+    (isTyping: boolean, isGroup: boolean, roomId?: string) => {
+      if (!socket) return;
+      socket.emit("event:typing", { isTyping, isGroup, roomId });
+    },
+    [socket]
+  );
+
   const onPreviousMessages = useCallback(
     (callback: (msgs: ChatMessage[]) => void) => {
       if (!socket) return;
@@ -83,6 +99,13 @@ export const SocketProvider = ({
     },
     [socket]
   );
+
+  const isTyping  = useCallback((callback: (data: { roomId: string; userId: string; fullName: string; isTyping: boolean }) => void) => {
+    if (!socket) return;
+    const handler = (data: { roomId: string; userId: string; fullName: string; isTyping: boolean }) => callback(data);
+    socket.on("event:typing", handler);
+    return () => socket.off("event:typing", handler);
+  }, [socket]);
 
   const onOnlineUsers = useCallback(
     (callback: (users: string[]) => void) => {
@@ -108,7 +131,9 @@ export const SocketProvider = ({
         onMessage,
         onPreviousMessages,
         disconnectSocket,
-        onOnlineUsers
+        onOnlineUsers,
+        handleTyping,
+        isTyping
       }}
     >
       {children}

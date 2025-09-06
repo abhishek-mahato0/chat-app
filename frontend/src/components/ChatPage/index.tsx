@@ -71,6 +71,8 @@ export const ChatPageInner = ({
     onMessage,
     onPreviousMessages,
     onOnlineUsers,
+    handleTyping,
+    isTyping,
   } = useSocket();
   const [params] = useSearchParams();
   const selectedUserId = params.get("friendId") || "";
@@ -79,6 +81,9 @@ export const ChatPageInner = ({
   const [selectedGroup, setSelectedGroup] = useState<IRoom | null>(null);
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
+  const [isTypingMaps, setIsTypingMaps] = useState<
+    Record<string, { isTyping: boolean; users: string[] }>
+  >({});
   const { data } = useQuery(GET_ALL_USERS, { variables: { id: userId } });
   const { data: groupData } = useQuery(GET_ROOMS_FOR_USER, {
     variables: { userId },
@@ -86,6 +91,7 @@ export const ChatPageInner = ({
 
   const handlePreviousMessages = useCallback(
     (msgs: any[]) => {
+      console.log("Previous messages:", msgs);
       if (!msgs) return;
       setMessagesMap((prev) => ({
         ...prev,
@@ -98,7 +104,7 @@ export const ChatPageInner = ({
   // Listen for new messages
   useEffect(() => {
     const handleMessage = (msg: any) => {
-      const target = msg.from || msg.roomId || msg.senderId;
+      const target = (selectedUserId ? msg.senderId : msg.roomId) as string;
       if (!target) return;
       setMessagesMap((prev) => ({
         ...prev,
@@ -109,9 +115,14 @@ export const ChatPageInner = ({
   }, [onMessage]);
 
   useEffect(() => {
-    if(!selectedGroupId && !selectedUserId) return;
+    if (!selectedGroupId && !selectedUserId) return;
     onPreviousMessages(handlePreviousMessages);
-  }, [onPreviousMessages, handlePreviousMessages, selectedGroupId, selectedUserId]);
+  }, [
+    onPreviousMessages,
+    handlePreviousMessages,
+    selectedGroupId,
+    selectedUserId,
+  ]);
 
   useEffect(() => {
     if (selectedUserId) joinRoom(undefined, selectedUserId);
@@ -146,7 +157,7 @@ export const ChatPageInner = ({
       setSelectedUser(
         data?.getAllUsers.find((u: User) => u.id === selectedUserId)
       );
-      setSelectedGroup(null)
+      setSelectedGroup(null);
     } else if (selectedGroupId) {
       setSelectedGroup(
         groupData?.getRoomsForUser.find((u: IRoom) => u?.id === selectedGroupId)
@@ -160,7 +171,43 @@ export const ChatPageInner = ({
     groupData?.getRoomsForUser,
   ]);
 
-  console.log("messagemnap", messagesMap)
+  useEffect(() => {
+    if (!selectedUserId && !selectedGroupId) return;
+    isTyping((data) => {
+      const targetId = selectedUserId ? data.userId : data.roomId;
+      if (targetId !== (selectedUserId || selectedGroupId)) return;
+      setIsTypingMaps((prev) => ({
+        ...prev,
+        [targetId]: {
+          isTyping: data.isTyping,
+          users: selectedGroupId
+            ? Array.from(
+                new Set([
+                  ...(isTypingMaps[selectedGroupId]?.users || []),
+                  data.fullName,
+                ])
+              )
+            : [data.fullName],
+        },
+      }));
+    });
+  }, [isTyping, isTypingMaps, selectedGroupId, selectedUserId]);
+
+  console.log(isTypingMaps, "istypingmaps");
+
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     if (!isTypingMaps[selectedUserId || selectedGroupId]?.isTyping) {
+  //       setIsTypingMaps((prev) => ({
+  //         ...prev,
+  //         [selectedUserId || selectedGroupId]: {
+  //           isTyping: false,
+  //           users: [],
+  //         },
+  //       }));
+  //     }
+  //   }, 2000);
+  // }, [isTypingMaps, selectedGroupId, selectedUserId]);
 
   return (
     <div className="flex min-h-screen bg-[#111418] text-white">
@@ -179,6 +226,19 @@ export const ChatPageInner = ({
           messages={messagesMap[selectedUserId || selectedGroupId] || []}
           userId={userId}
           sendMessage={handleSend}
+          handleTyping={() =>
+            handleTyping(
+              true,
+              selectedUserId ? false : true,
+              selectedUserId || selectedGroupId
+            )
+          }
+          isTyping={
+            isTypingMaps[selectedUserId || selectedGroupId]?.isTyping || false
+          }
+          typingUsers={
+            isTypingMaps[selectedUserId || selectedGroupId]?.users || []
+          }
         />
       </div>
     </div>

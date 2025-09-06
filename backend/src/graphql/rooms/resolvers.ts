@@ -27,7 +27,7 @@ export const resolvers = {
 
       // attach unreadCount
       return Promise.all(
-        rooms.map(async (room) => {
+        rooms.map(async (room: any) => {
           const roomUser = await prismaClient.roomUser.findFirst({
             where: { roomId: room.id, userId },
             select: { lastSeenMessageId: true },
@@ -55,7 +55,7 @@ export const resolvers = {
 
           return {
             ...room,
-            users: room.users.map((ru) => ru.user),
+            users: room.users.map((ru: any) => ru?.user),
             unreadCount,
           };
         })

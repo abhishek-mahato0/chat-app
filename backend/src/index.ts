@@ -37,27 +37,30 @@ async function init() {
 
   const httpServer = createServer(app);
   socketService.IO.attach(httpServer);
-
-  const gqlServer = await createGQLServer();
+  try {
+    const gqlServer = await createGQLServer();
 
   app.get("/", (req, res) => {
     return res.json({ message: "welcome home" });
   });
 
   app.use("/graphql", bodyParser.json(), expressMiddleware(gqlServer, {
-    context: async ({ req }) => {
+context: async ({ req }) => {
       const token = req.headers.authorization?.replace("Bearer ", "");
-      try {
-        if (!token) throw new Error("Unauthorized");
+      if (!token) {
+        return { user: null }; // no user but still return context
+      }
 
+      try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        const user = await getPrismaClient().user.findUnique({ where: { id: decoded.userId } });
-        if (!user) throw new Error("User not found");
+        const user = await getPrismaClient().user.findUnique({
+          where: { id: decoded.userId },
+        });
 
         return { user };
       } catch (error) {
         console.error("Error verifying token:", error);
-        throw new Error("Unauthorized");
+        return { user: null }; // token invalid, but don't crash whole request
       }
     },
   }));
@@ -68,6 +71,9 @@ async function init() {
   // await connectRedis();
   socketService.initListeners();
   // await initRedisConsumer(socketService);
+  } catch (error) {
+    console.error("Error starting GraphQL server:", error);
+  }
 }
 
 init();

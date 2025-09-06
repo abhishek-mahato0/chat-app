@@ -20,7 +20,7 @@ export const resolvers = {
         select: { friendId: true },
       });
 
-      const friendIds = friends.map((f) => f.friendId);
+      const friendIds = friends.map((f: any) => f.friendId);
 
       // Feed = user's own posts + friends' posts
       return prismaClient.post.findMany({

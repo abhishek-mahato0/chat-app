@@ -10,13 +10,19 @@ const ChatBox = ({
   selectedUser,
   messages,
   userId,
-  sendMessage
+  sendMessage,
+  handleTyping,
+  isTyping,
+  typingUsers
 }: {
   selectedGroup: IRoom | null;
   selectedUser: User | null;
   messages: Message[];
   userId: string;
   sendMessage: (message: string) => void;
+  handleTyping: () => void;
+  isTyping: boolean;
+  typingUsers: string[];
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -46,7 +52,16 @@ const ChatBox = ({
         })}
         <div ref={messagesEndRef} />
       </div>
-      <MessageInput sendMessage={sendMessage} />
+      <MessageInput sendMessage={sendMessage} handleTyping={handleTyping} />
+      {isTyping && (
+        <div className="p-2 text-sm text-gray-400">
+          {typingUsers?.length > 0 ? (
+            <span>{typingUsers?.join(", ")} {typingUsers.length > 1 ? "are" : "is"} typing...</span>
+          ) : (
+            <span>Typing...</span>
+          )}
+        </div>
+      )}
     </div>
   );
 };
