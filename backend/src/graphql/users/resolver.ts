@@ -10,13 +10,14 @@ export const resolvers = {
       return prismaClient.user.findUnique({ where: { id } });
     },
     getAllUsers: async (_: any, { id }: { id: string }) => {
-      return prismaClient.user.findMany({
+      const users = await prismaClient.user.findMany({
         where: {
           NOT: {
             id: id,
           },
         },
       });
+      return { users }; // Return an object with a 'users' field
     },
     getUserByEmailAndPassword: async (
       _: any,

@@ -12,6 +12,7 @@ type Room {
   isGroup: Boolean!
   users: [User!]!
   messages: [Message!]!
+  latestMessage: Message
 }
 
 type Message {

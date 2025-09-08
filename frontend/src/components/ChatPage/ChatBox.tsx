@@ -20,9 +20,9 @@ const ChatBox = ({
   messages: Message[];
   userId: string;
   sendMessage: (message: string) => void;
-  handleTyping: () => void;
+  handleTyping: (isTyping: boolean) => void;
   isTyping: boolean;
-  typingUsers: string[];
+  typingUsers: Array<string | boolean>;
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -31,7 +31,7 @@ const ChatBox = ({
 
   if (!selectedUser && !selectedGroup) return <SelectUserPlaceholder />;
   return (
-    <div className="flex flex-col flex-1 md:h-screen h-full overflow-hidden">
+    <div className="flex flex-col flex-1 md:h-screen h-full pb-8 overflow-hidden">
       <div className="p-4 border-b border-b-gray-700 flex items-center gap-3">
         <Avatar>
           <AvatarImage src={selectedUser?.avatar} alt={selectedUser?.fullname || selectedGroup?.name} />
@@ -52,16 +52,7 @@ const ChatBox = ({
         })}
         <div ref={messagesEndRef} />
       </div>
-      <MessageInput sendMessage={sendMessage} handleTyping={handleTyping} />
-      {isTyping && (
-        <div className="p-2 text-sm text-gray-400">
-          {typingUsers?.length > 0 ? (
-            <span>{typingUsers?.join(", ")} {typingUsers.length > 1 ? "are" : "is"} typing...</span>
-          ) : (
-            <span>Typing...</span>
-          )}
-        </div>
-      )}
+      <MessageInput sendMessage={sendMessage} handleTyping={handleTyping} isTyping={isTyping} typingUsers={typingUsers} />
     </div>
   );
 };

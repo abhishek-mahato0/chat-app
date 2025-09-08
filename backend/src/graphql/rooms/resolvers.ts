@@ -25,6 +25,7 @@ export const resolvers = {
         },
       });
 
+      console.log({ rooms });
       // attach unreadCount
       return Promise.all(
         rooms.map(async (room: any) => {

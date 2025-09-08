@@ -12,6 +12,7 @@ type Room {
   isGroup: Boolean!
   users: [User!]!
   messages: [Message!]!
+  latestMessage: Message
 }
 
 type Message {
@@ -20,6 +21,8 @@ type Message {
   sender: User!
   room: Room!
   createdAt: String!
+  text: String!
+  senderId: String!
 }
 
 type Post {

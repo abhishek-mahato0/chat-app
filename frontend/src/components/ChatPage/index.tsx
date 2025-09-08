@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { gql, useQuery } from "@apollo/client";
 import { SocketProvider } from "../../context/SocketProvider";
 import { useSocket } from "../../context/utils";
@@ -22,6 +22,7 @@ export interface User {
   avatar?: string;
 }
 export interface Message {
+  roomId?: string;
   senderId: string;
   text: string;
   from?: string;
@@ -54,6 +55,14 @@ const GET_ROOMS_FOR_USER = gql`
         username
         email
       }
+      latestMessage {
+        id
+        text
+        senderId
+        sender {
+          fullname
+        }
+      }
     }
   }
 `;
@@ -82,8 +91,9 @@ export const ChatPageInner = ({
   const [messagesMap, setMessagesMap] = useState<Record<string, Message[]>>({});
   const [onlineUsers, setOnlineUsers] = useState<string[]>([]);
   const [isTypingMaps, setIsTypingMaps] = useState<
-    Record<string, { isTyping: boolean; users: string[] }>
+    Record<string, { isTyping: boolean; userId: string; name: string }[]>
   >({});
+  const [latestMessage, setLatestMessage] = useState<Message | null>(null);
   const { data } = useQuery(GET_ALL_USERS, { variables: { id: userId } });
   const { data: groupData } = useQuery(GET_ROOMS_FOR_USER, {
     variables: { userId },
@@ -91,7 +101,6 @@ export const ChatPageInner = ({
 
   const handlePreviousMessages = useCallback(
     (msgs: any[]) => {
-      console.log("Previous messages:", msgs);
       if (!msgs) return;
       setMessagesMap((prev) => ({
         ...prev,
@@ -104,8 +113,17 @@ export const ChatPageInner = ({
   // Listen for new messages
   useEffect(() => {
     const handleMessage = (msg: any) => {
+      console.log("New message received:", msg);
       const target = (selectedUserId ? msg.senderId : msg.roomId) as string;
       if (!target) return;
+      setLatestMessage({
+        roomId: msg.roomId,
+        senderId: msg.senderId,
+        text: msg.text,
+        sender: {
+          fullname: msg.sender?.fullname,
+        },
+      });
       setMessagesMap((prev) => ({
         ...prev,
         [target]: [...(prev[target] || []), msg],
@@ -132,7 +150,14 @@ export const ChatPageInner = ({
   const handleSend = (input: string) => {
     if (!input.trim() || (!selectedUserId && !selectedGroupId)) return;
     sendMessage(input, selectedGroupId, selectedUserId);
-
+    setLatestMessage({
+      roomId: selectedGroupId,
+      senderId: userId,
+      text: input,
+      sender: {
+        fullname: fullname,
+      },
+    });
     setMessagesMap((prev) => ({
       ...prev,
       [selectedUserId || selectedGroupId]: [
@@ -176,41 +201,23 @@ export const ChatPageInner = ({
     isTyping((data) => {
       const targetId = selectedUserId ? data.userId : data.roomId;
       if (targetId !== (selectedUserId || selectedGroupId)) return;
-      setIsTypingMaps((prev) => ({
-        ...prev,
-        [targetId]: {
-          isTyping: data.isTyping,
-          users: selectedGroupId
-            ? Array.from(
-                new Set([
-                  ...(isTypingMaps[selectedGroupId]?.users || []),
-                  data.fullName,
-                ])
-              )
-            : [data.fullName],
-        },
-      }));
+      setIsTypingMaps((prev) => {
+        const prevArr = prev[targetId] || [];
+        const filteredArr = prevArr.filter((u) => u.userId !== data.userId);
+        const newArr = [
+          ...filteredArr,
+          { isTyping: data.isTyping, userId: data.userId, name: data.fullName },
+        ];
+        return {
+          ...prev,
+          [targetId]: newArr,
+        };
+      });
     });
   }, [isTyping, isTypingMaps, selectedGroupId, selectedUserId]);
 
-  console.log(isTypingMaps, "istypingmaps");
-
-  // useEffect(() => {
-  //   setTimeout(() => {
-  //     if (!isTypingMaps[selectedUserId || selectedGroupId]?.isTyping) {
-  //       setIsTypingMaps((prev) => ({
-  //         ...prev,
-  //         [selectedUserId || selectedGroupId]: {
-  //           isTyping: false,
-  //           users: [],
-  //         },
-  //       }));
-  //     }
-  //   }, 2000);
-  // }, [isTypingMaps, selectedGroupId, selectedUserId]);
-
   return (
-    <div className="flex min-h-screen bg-[#111418] text-white">
+    <div className="flex h-screen bg-[#111418] text-white">
       {/* Sidebar */}
       <Sidebar
         onlineUsers={onlineUsers}
@@ -226,18 +233,22 @@ export const ChatPageInner = ({
           messages={messagesMap[selectedUserId || selectedGroupId] || []}
           userId={userId}
           sendMessage={handleSend}
-          handleTyping={() =>
+          handleTyping={(isTyping: boolean) => {
             handleTyping(
-              true,
+              isTyping,
               selectedUserId ? false : true,
               selectedUserId || selectedGroupId
-            )
-          }
+            );
+          }}
           isTyping={
-            isTypingMaps[selectedUserId || selectedGroupId]?.isTyping || false
+            isTypingMaps[selectedUserId || selectedGroupId]?.some(
+              (u) => u.isTyping
+            ) || false
           }
           typingUsers={
-            isTypingMaps[selectedUserId || selectedGroupId]?.users || []
+            isTypingMaps[selectedUserId || selectedGroupId]?.map(
+              (u) => u.isTyping && u.name
+            ) || []
           }
         />
       </div>

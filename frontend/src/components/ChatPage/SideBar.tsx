@@ -1,6 +1,6 @@
 import { MessageCirclePlus } from "lucide-react";
 import { FormComponent } from "../FormInput";
-import FriendItem, { type IFriendItemProps } from "./FriendList";
+import FriendItem, { type IFriendItemProps, type LastMessage } from "./FriendList";
 import SuggestedItem, { type ISuggestedItemProps } from "./SuggestedItem";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { CreateGroupBody } from "../AddFriends";
@@ -13,7 +13,9 @@ interface ISideBarProps {
     id: string;
     name: string;
     users: Array<IFriendItemProps>;
+    latestMessage?: LastMessage;
   }>;
+
 }
 
 const EmptyFriendList = ({ text }: { text: string }) => {
@@ -21,6 +23,7 @@ const EmptyFriendList = ({ text }: { text: string }) => {
 };
 
 const Sidebar = ({ friends, suggested, onlineUsers, groupChats }: ISideBarProps) => {
+  console.log({ friends, suggested, onlineUsers, groupChats });
   return (
     <div className="flex flex-col w-80 gap-4 bg-[#111418] h-full py-6 px-5 overflow-y-auto">
       <div className="flex items-center gap-3 justify-between mb-4">
@@ -52,7 +55,7 @@ const Sidebar = ({ friends, suggested, onlineUsers, groupChats }: ISideBarProps)
         {groupChats.length === 0 ? (
           <EmptyFriendList text="No Groups Created Yet." />
         ) : (
-          groupChats.map((s, i) => <FriendItem key={i} id={s.id} fullname={s.name} online={s.users.some((u) => onlineUsers.includes(u.id))} isGroup />)
+          groupChats.map((s, i) => <FriendItem key={i} id={s.id} lastMessage={s.latestMessage} fullname={s.name} online={s.users.some((u) => onlineUsers.includes(u.id))} isGroup />)
         )}
       </div>
       <div className="flex flex-col gap-4">
